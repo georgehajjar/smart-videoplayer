@@ -1,0 +1,4 @@
+sockets:
+  c2c: #Control server to client(s)
+    host: 'localhost'
+    port: 8001
