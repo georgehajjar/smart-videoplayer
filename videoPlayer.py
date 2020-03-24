@@ -27,21 +27,28 @@ class TestPanel(wx.Panel):
 
         self.Bind(wx.media.EVT_MEDIA_LOADED, self.OnMediaLoaded)
 
-        btn1 = wx.Button(self, -1, "Play")
-        self.Bind(wx.EVT_BUTTON, self.OnPlay, btn1)
-        self.playBtn = btn1
+        play = wx.Button(self, -1, "Play")
+        self.Bind(wx.EVT_BUTTON, self.OnPlay, play)
+        self.playBtn = play
 
-        btn2 = wx.Button(self, -1, "Pause")
-        self.Bind(wx.EVT_BUTTON, self.OnPause, btn2)
+        pause = wx.Button(self, -1, "Pause")
+        self.Bind(wx.EVT_BUTTON, self.OnPause, pause)
+        self.pauseBtn = pause
 
-        btn3 = wx.Button(self, -1, "Load Video 1")
-        self.Bind(wx.EVT_BUTTON, lambda event: self.requestVideo(event, 1), btn3)
+        forward = wx.Button(self, -1, "+5 Sec")
+        self.Bind(wx.EVT_BUTTON, self.OnForward, forward)
 
-        btn4 = wx.Button(self, -1, "Load Video 2")
-        self.Bind(wx.EVT_BUTTON, lambda event: self.requestVideo(event, 2), btn4)
+        backward = wx.Button(self, -1, "-5 Sec")
+        self.Bind(wx.EVT_BUTTON, self.OnBackward, backward)
 
-        btn5 = wx.Button(self, -1, "Load Video 3")
-        self.Bind(wx.EVT_BUTTON, lambda event: self.requestVideo(event, 3), btn5)
+        load1 = wx.Button(self, -1, "Load Video 1")
+        self.Bind(wx.EVT_BUTTON, lambda event: self.requestVideo(event, 1), load1)
+
+        load2 = wx.Button(self, -1, "Load Video 2")
+        self.Bind(wx.EVT_BUTTON, lambda event: self.requestVideo(event, 2), load2)
+
+        load3 = wx.Button(self, -1, "Load Video 3")
+        self.Bind(wx.EVT_BUTTON, lambda event: self.requestVideo(event, 3), load3)
 
         slider = wx.Slider(self, -1, 0, 0, 10)
         self.slider = slider
@@ -53,19 +60,21 @@ class TestPanel(wx.Panel):
 
         # setup the layout
         sizer = wx.GridBagSizer(5,5)
-        sizer.Add(self.mc, (1,1), span=(5,1))#, flag=wx.EXPAND)
-        sizer.Add(btn1, (1,3))
-        sizer.Add(btn2, (2,3))
-        sizer.Add(btn3, (3,3))
-        sizer.Add(btn4, (4,3))
-        sizer.Add(btn5, (5,3))
+        sizer.Add(self.mc, (1,1), span=(5,1), flag=wx.EXPAND)
+        sizer.Add(self.st_pos,  (1, 2))
+        sizer.Add(play, (2,2))
+        sizer.Add(pause, (3,2))
+        sizer.Add(forward, (4,2))
+        sizer.Add(backward, (5,2))
+        sizer.Add(load1, (2,3))
+        sizer.Add(load2, (3,3))
+        sizer.Add(load3, (4,3))
         sizer.Add(slider, (6,1), flag=wx.EXPAND)
-        sizer.Add(self.st_len,  (1, 5))
-        sizer.Add(self.st_pos,  (2, 5))
+        sizer.Add(self.st_len,  (6, 2))
         self.SetSizer(sizer)
 
-        self.loadVideo(os.path.abspath("database/video.mp4"))
-        wx.CallAfter(self.loadVideo, os.path.abspath("database/video.mp4"))
+        self.loadVideo(os.path.abspath("../video1.mp4"))
+        wx.CallAfter(self.loadVideo, os.path.abspath("../video1.mp4"))
 
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.OnTimer)
@@ -80,36 +89,51 @@ class TestPanel(wx.Panel):
             self.GetSizer().Layout()
             self.slider.SetRange(0, self.mc.Length())
             self.playBtn.Enable()
+            self.pauseBtn.Disable()
 
     def OnMediaLoaded(self, evt):
         self.playBtn.Enable()
 
     def requestVideo(self, evt, videoID):
         client.requestVideo(videoID)
+        # self.loadVideo(os.path.abspath("../video1.mp4"))
 
     def OnPlay(self, evt):
         client.sendAction("ply", self.mc.Tell())
         if not self.mc.Play():
-            wx.MessageBox("Unable to Play media : Unsupported format?", "ERROR", wx.ICON_ERROR | wx.OK)
+            wx.MessageBox("Unable to Play media", "ERROR", wx.ICON_ERROR | wx.OK)
         else:
             self.mc.SetInitialSize()
             self.GetSizer().Layout()
             self.slider.SetRange(0, self.mc.Length())
+            self.playBtn.Disable()
+            self.pauseBtn.Enable()
 
     def OnPause(self, evt):
         client.sendAction("pse", self.mc.Tell())
         self.mc.Pause()
+        self.playBtn.Enable()
+        self.pauseBtn.Disable()
+
+    def OnForward(self, evt):
+        client.sendAction("ffw", self.mc.Tell())
+        offset = self.slider.GetValue()
+        self.mc.Seek(offset + 5000)
+
+    def OnBackward(self, evt):
+        client.sendAction("rwd", self.mc.Tell())
+        offset = self.slider.GetValue()
+        self.mc.Seek(offset - 5000)
 
     def OnSeek(self, evt):
-        client.sendAction("ffw", self.mc.Tell())
         offset = self.slider.GetValue()
         self.mc.Seek(offset)
 
     def OnTimer(self, evt):
         offset = self.mc.Tell()
         self.slider.SetValue(offset)
-        self.st_len.SetLabel('length: %d seconds' % (self.mc.Length()/1000))
-        self.st_pos.SetLabel('position: %d' % offset)
+        self.st_len.SetLabel('{:.2f}'.format(self.mc.Length()/1000))
+        self.st_pos.SetLabel('{:.2f}/{:.2f}'.format(offset/1000, self.mc.Length()/1000))
 
     def ShutdownDemo(self):
         self.timer.Stop()
@@ -117,7 +141,7 @@ class TestPanel(wx.Panel):
 
 class MyFrame(wx.Frame):
     def __init__(self):
-        wx.Frame.__init__(self,parent=None, title="Video Player")
+        wx.Frame.__init__(self,parent=None, title="Smart VP")
         self._my_sizer = wx.BoxSizer(wx.VERTICAL)
         panel1 = TestPanel(self, None)
         self._my_sizer.Add(panel1, 1, wx.EXPAND)

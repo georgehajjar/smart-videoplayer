@@ -15,8 +15,16 @@ total_connections = 0
 #Client class, new instance created for each connected client
 #Each instance has the socket and address that is associated with items
 #Along with an assigned ID
-class Client(threading.Thread):
+def newClientConnection(socket):
+    while True:
+        sock, address = socket.accept()
+        global total_connections
+        clientConnections.append(Client(sock, address, total_connections, True))
+        clientConnections[len(clientConnections) - 1].start()
+        total_connections += 1
+        print("Total Connections " + str(total_connections))
 
+class Client(threading.Thread):
     def __init__(self, socket, address, id, signal):
         threading.Thread.__init__(self)
         self.socket = socket
@@ -25,6 +33,7 @@ class Client(threading.Thread):
         self.signal = signal
 
     def run(self):
+        global total_connections
         while self.signal:
             try:
                 data = self.socket.recv(32)
@@ -33,6 +42,7 @@ class Client(threading.Thread):
                 self.signal = False
                 self.socket.close()
                 clientConnections.remove(self)
+                total_connections -= 1
             else:
                 data = data.decode("utf-8")
                 if not data:
@@ -40,31 +50,21 @@ class Client(threading.Thread):
                     self.signal = False
                     self.socket.close()
                     clientConnections.remove(self)
+                    total_connections -= 1
                     break
-                #decodeMessage(self.id, data)
+                print(data)
                 clientDecode(self.socket, data)
         return
 
-def newClientConnection(socket):
-    while True:
-        sock, address = socket.accept()
-        global total_connections
-        clientConnections.append(Client(sock, address, total_connections, True))
-        clientConnections[len(clientConnections) - 1].start()
-        print("New connection at ID " + str(clientConnections[len(clientConnections) - 1]))
-        total_connections += 1
-        print("Total Connections " + str(total_connections))
-
-# def decodeMessage(id, data):
-#     for client in clientConnections:
-#         if client.id == id:
-#             print("Client: " + str(client) + ". Sends data: " + str(data))
-
 def clientDecode(sock, data):
-    if data[0:2] == "req":
-        forwardVideoRequest(sock, data[3:])
-    elif data[0:3] == "act":
+    if data[:3] == "req": #Recieve a request to load video.
+        #Send video ID back to client to fetch.
+        sock.send(str.encode("req" + str(mongoConfig.findVideoById(data[3:]))))
+    elif data[:3] == "act": #Recieve an action performed on video.
+        #Save action to database.
         updateActions(data[3:6], data[6:9], data[9:])
+        #Send action back to client to perform.
+        sock.send(str.encode("act" + str(data[3:6])))
     return
 
 # Append time to specific action in videoBehaviour database
