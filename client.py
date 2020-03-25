@@ -6,7 +6,9 @@ import yaml
 #Module imports
 
 #Global vars
-currentVideoID = "001"
+videoLoaded = False
+currentVideoID = ""
+currentVideoPath = ""
 cSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 def recieve(sock, next):
@@ -32,16 +34,24 @@ def recieve(sock, next):
 
 def controlDecode(sock, data):
     if data[:3] == "req":
-        print()
+        global videoLoaded, currentVideoID, currentVideoPath
+        currentVideoID = data[3:6]
+        currentVideoPath = data[6:]
+        videoLoaded = True
     elif data[:3] == "act":
-        handleAction()
+        handleAction(data[3:])
     return
 
 #Method gets called when user requests video from list
 def requestVideo(videoID):
-    currentVideoID = videoID
+    global videoLoaded
     #Send video id to control server
     cSock.send(str.encode("req" + str(videoID)))
+    while not videoLoaded:
+        #Wait for responce back
+        pass
+    videoLoaded = False
+    return currentVideoPath
 
 #Method gets called when user performs action on video
 def sendAction(action, time):
@@ -49,6 +59,9 @@ def sendAction(action, time):
         #To perform the action: action -> control server -> client
         #To save the action: action -> database
     cSock.send(str.encode("act" + str(action) + str(currentVideoID) + str(time)))
+
+def handleAction(action):
+    print(action)
 
 def setup():
     with open('config.yaml', 'r') as f:

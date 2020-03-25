@@ -42,13 +42,13 @@ class TestPanel(wx.Panel):
         self.Bind(wx.EVT_BUTTON, self.OnBackward, backward)
 
         load1 = wx.Button(self, -1, "Load Video 1")
-        self.Bind(wx.EVT_BUTTON, lambda event: self.requestVideo(event, 1), load1)
+        self.Bind(wx.EVT_BUTTON, lambda event: self.requestVideo(event, "001"), load1)
 
         load2 = wx.Button(self, -1, "Load Video 2")
-        self.Bind(wx.EVT_BUTTON, lambda event: self.requestVideo(event, 2), load2)
+        self.Bind(wx.EVT_BUTTON, lambda event: self.requestVideo(event, "002"), load2)
 
         load3 = wx.Button(self, -1, "Load Video 3")
-        self.Bind(wx.EVT_BUTTON, lambda event: self.requestVideo(event, 3), load3)
+        self.Bind(wx.EVT_BUTTON, lambda event: self.requestVideo(event, "003"), load3)
 
         slider = wx.Slider(self, -1, 0, 0, 10)
         self.slider = slider
@@ -61,7 +61,7 @@ class TestPanel(wx.Panel):
         # setup the layout
         sizer = wx.GridBagSizer(5,5)
         sizer.Add(self.mc, (1,1), span=(5,1), flag=wx.EXPAND)
-        sizer.Add(self.st_pos,  (1, 2))
+        sizer.Add(self.st_pos, (1, 2))
         sizer.Add(play, (2,2))
         sizer.Add(pause, (3,2))
         sizer.Add(forward, (4,2))
@@ -70,15 +70,17 @@ class TestPanel(wx.Panel):
         sizer.Add(load2, (3,3))
         sizer.Add(load3, (4,3))
         sizer.Add(slider, (6,1), flag=wx.EXPAND)
-        sizer.Add(self.st_len,  (6, 2))
+        sizer.Add(self.st_len, (6, 2))
         self.SetSizer(sizer)
-
-        self.loadVideo(os.path.abspath("../video1.mp4"))
-        wx.CallAfter(self.loadVideo, os.path.abspath("../video1.mp4"))
 
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.OnTimer)
         self.timer.Start(100)
+
+    def requestVideo(self, evt, videoID):
+        path = client.requestVideo(videoID)
+        self.loadVideo(os.path.abspath("../" + str(path) + ".mp4"))
+        wx.CallAfter(self.loadVideo, os.path.abspath("../" + str(path) + ".mp4"))
 
     def loadVideo(self, path):
         if not self.mc.Load(path):
@@ -93,10 +95,6 @@ class TestPanel(wx.Panel):
 
     def OnMediaLoaded(self, evt):
         self.playBtn.Enable()
-
-    def requestVideo(self, evt, videoID):
-        client.requestVideo(videoID)
-        # self.loadVideo(os.path.abspath("../video1.mp4"))
 
     def OnPlay(self, evt):
         client.sendAction("ply", self.mc.Tell())

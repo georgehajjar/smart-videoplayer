@@ -1,7 +1,6 @@
 from pymongo import MongoClient
 import mongoengine
 from mongoModels import Video, Behaviour
-import uuid
 
 mongo = MongoClient()
 mongo = MongoClient('localhost', 27017)
@@ -20,6 +19,12 @@ def findVideoById(videoID):
         return Video.objects(videoID=str(videoID)).get()
     except:
         print("No video with that ID found")
+
+def findVideoByTitle(title):
+    try:
+        return Video.objects(title=str(title)).get()
+    except:
+        print("No video with that title found")
 
 def findVideosByGenre(genre):
     try:
@@ -73,12 +78,12 @@ def filterBehaviourByGenre(genre):
         print(elem.videoID)
 
 # def seedDatabase():
-    # addVideo(Video(videoID="001", raw=1, title="Action Vid 1", length=9.01, genre="Action"))
-    # addVideo(Video(videoID="002", raw=1, title="Comedy Vid 2", length=10.01, genre="Comedy"))
-    # addVideo(Video(videoID="003", raw=1, title="Comedy Vid 1", length=11.01, genre="Comedy"))
-    # addVideo(Video(videoID="004", raw=1, title="Action Vid 2", length=12.01, genre="Action"))
-    # addVideo(Video(videoID="005", raw=1, title="Drama Vid 1", length=13.01, genre="Drama"))
-    # addVideo(Video(videoID="006", raw=1, title="Action Vid 3", length=14.01, genre="Action"))
+#     addVideo(Video(videoID="001", title="video1", length=21.52, genre="Action"))
+#     addVideo(Video(videoID="002", title="Summer2015", length=21.52, genre="Action"))
+    # addVideo(Video(videoID="003", path="", title="video3", length=0.0, genre="Comedy"))
+    # addVideo(Video(videoID="004", path="", title="video4", length=0.0, genre="Action"))
+    # addVideo(Video(videoID="005", path="", title="video5", length=0.0, genre="Drama"))
+    # addVideo(Video(videoID="006", path="", title="video6", length=0.0, genre="Action"))
     # addPlayBehaviour(Behaviour(videoID="001", played=[1]))
     # addPlayBehaviour(Behaviour(videoID="001", played=[2]))
     # addPlayBehaviour(Behaviour(videoID="001", played=[3]))
@@ -89,4 +94,3 @@ def filterBehaviourByGenre(genre):
     # addRWBehaviour(Behaviour(videoID="001", rewound=[6]))
 
 # seedDatabase()
-# filterBehaviourByGenre("Action")

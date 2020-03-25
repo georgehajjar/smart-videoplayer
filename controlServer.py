@@ -58,8 +58,10 @@ class Client(threading.Thread):
 
 def clientDecode(sock, data):
     if data[:3] == "req": #Recieve a request to load video.
-        #Send video ID back to client to fetch.
-        sock.send(str.encode("req" + str(mongoConfig.findVideoById(data[3:]))))
+        #Find video in database
+        video = mongoConfig.findVideoById(data[3:])
+        #Send path to client
+        sock.send(str.encode("req" + str(video.videoID) + str(video.title)))
     elif data[:3] == "act": #Recieve an action performed on video.
         #Save action to database.
         updateActions(data[3:6], data[6:9], data[9:])
