@@ -52,7 +52,7 @@ class Client(threading.Thread):
                     clientConnections.remove(self)
                     total_connections -= 1
                     break
-                print(data)
+                # print(data)
                 clientDecode(self.socket, data)
         return
 

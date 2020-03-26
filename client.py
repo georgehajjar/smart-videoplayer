@@ -28,7 +28,7 @@ def recieve(sock, next):
                 connected = False
                 sock.close()
                 break
-            print(data)
+            # print(data)
             next(sock, data)
     return
 
@@ -61,7 +61,16 @@ def sendAction(action, time):
     cSock.send(str.encode("act" + str(action) + str(currentVideoID) + str(time)))
 
 def handleAction(action):
-    print(action)
+    if action == "ply":
+        print("User has pressed play")
+    elif action == "pse":
+        print("User has pressed pause")
+    elif action == "ffw":
+        print("User has fastforwarded")
+    elif action == "rwd":
+        print("User has rewound")
+    else:
+        print(action)
 
 def setup():
     with open('config.yaml', 'r') as f:
