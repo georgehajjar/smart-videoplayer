@@ -5,6 +5,7 @@ import yaml
 import wx
 import wx.media
 import os
+import json
 
 #Global vars
 connectionHalted = False
@@ -176,7 +177,7 @@ def recieve(sock, next):
     connected = True
     while connected:
         try:
-            data = sock.recv(32)
+            data = sock.recv(1024)
         except:
             print("Server " + str(sock.getsockname()) + " has disconnected")
             connected = False
@@ -193,12 +194,15 @@ def recieve(sock, next):
     return
 
 def controlDecode(sock, data):
-    if data[:3] == "req":
+    recievedData = json.loads(data)
+    if recievedData['type'] == "req":
         global currentVideoID, currentVideoPath, videoLoaded
-        currentVideoID = data[3:6]
-        currentVideoPath = data[6:]
+        currentVideoID = recievedData['videoID']
+        currentVideoPath = recievedData['title']
         videoLoaded = True
-    elif data[:3] == "act":
+    elif recievedData['type'] == "prd":
+        applyPredictions(recievedData['prediction'])
+    elif recievedData['type'] == "act":
         global actionHandled
         actionHandled = True
     return
@@ -207,7 +211,12 @@ def controlDecode(sock, data):
 def requestVideo(videoID):
     global videoLoaded
     #Send video id to control server
-    cSock.send(str.encode("req" + str(videoID)))
+    sendData = {
+        'type': 'req',
+        'videoID': str(videoID)
+    }
+    json_data = json.dumps(sendData).encode('utf-8')
+    cSock.sendall(json_data)
     while not videoLoaded:
         #Wait for responce back
         pass
@@ -220,18 +229,27 @@ def sendAction(action, time):
     #Send action to control server for 2 reasons
         #To perform the action: action -> control server -> client
         #To save the action: action -> database
-    cSock.send(str.encode("act" + str(action) + str(currentVideoID) + str(time)))
+    sendData = {
+        'type': 'act',
+        'action': action,
+        'videoID': currentVideoID,
+        'time': time
+    }
+    json_data = json.dumps(sendData).encode('utf-8')
+    cSock.sendall(json_data)
     while not actionHandled:
         #Wait for responce back
         pass
     actionHandled = False
-    applyPredictions()
+    # applyPredictions()
     return True
 
-def applyPredictions():
+def applyPredictions(predictionsArray):
     global connectionHalted
-    connectionHalted = True
-    cSock.close()
+    for elem in predictionsArray:
+        print(elem)
+    # connectionHalted = True
+    # cSock.close()
 
 def setup():
     with open('config.yaml', 'r') as f:

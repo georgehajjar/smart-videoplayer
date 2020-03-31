@@ -3,6 +3,7 @@ import sys
 import socket
 import threading
 import yaml
+import json
 
 #Module imports
 sys.path.insert(0, 'database')
@@ -36,7 +37,7 @@ class Client(threading.Thread):
         global total_connections
         while self.signal:
             try:
-                data = self.socket.recv(32)
+                data = self.socket.recv(1024)
             except:
                 print("Client " + str(self.address) + " has disconnected")
                 self.signal = False
@@ -57,18 +58,35 @@ class Client(threading.Thread):
         return
 
 def clientDecode(sock, data):
-    if data[:3] == "req": #Recieve a request to load video.
+    recievedData = json.loads(data)
+    if recievedData['type'] == "req": #Recieve a request to load video.
         #Find video in database
-        video = mongoConfig.findVideoById(data[3:])
+        video = mongoConfig.findVideoById(recievedData['videoID'])
         #Send path to client
-        sock.send(str.encode("req" + str(video.videoID) + str(video.title)))
-        #Get video genre
-        sock.send(mongoConfig.findPredictionByGenre(str(mongoConfig.findVideoById(str(video.videoID)).genre)))
-    elif data[:3] == "act": #Recieve an action performed on video.
+        sendData = {
+            'type': 'req',
+            'videoID': str(video.videoID),
+            'title': str(video.title)
+        }
+        json_data = json.dumps(sendData).encode('utf-8')
+        sock.sendall(json_data)
+        #Get video genre and send the corresponding predictions
+        sendData = {
+            'type': 'prd',
+            'prediction': mongoConfig.findPredictionByGenre(str(mongoConfig.findVideoById(str(video.videoID)).genre))
+        }
+        json_data = json.dumps(sendData).encode('utf-8')
+        sock.sendall(json_data)
+    elif recievedData['type'] == "act": #Recieve an action performed on video.
         #Save action to database.
-        updateActions(data[3:6], data[6:9], data[9:])
+        updateActions(recievedData['action'], recievedData['videoID'], recievedData['time'])
         #Send action back to client to perform.
-        sock.send(str.encode("act" + str(data[3:6])))
+        sendData = {
+            'type': 'act',
+            'action': recievedData['action']
+        }
+        json_data = json.dumps(sendData).encode('utf-8')
+        sock.sendall(json_data)
     return
 
 # Append time to specific action in videoBehaviour database
