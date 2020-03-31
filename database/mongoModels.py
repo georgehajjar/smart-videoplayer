@@ -2,18 +2,17 @@ import mongoengine
 
 class Video(mongoengine.Document):
     videoID = mongoengine.StringField(required=True, unique=True, max_length=3) #Limit to 3 chars
-    title = mongoengine.StringField(required=True)
-    length = mongoengine.IntField(required=True) #Stored in seconds so no need for double/float
+    title = mongoengine.StringField(required=True) #Also used as name of video file (must hold true in order to locate video)
+    length = mongoengine.IntField(required=True) #Stored in milliseconds so no need for double/float
     genre = mongoengine.StringField(required=True)
-    # path = mongoengine.StringField(required=True) #Location of video file
-    # meta = {'allow_inheritance': True}
 
 class Behaviour(mongoengine.Document):
     videoID = mongoengine.StringField(required=True) #Used to reference Video collection
-    paused = mongoengine.ListField()
-    played = mongoengine.ListField()
-    rewound = mongoengine.ListField()
-    fastforwarded = mongoengine.ListField()
+    played = mongoengine.ListField() #Milliseconds
+    paused = mongoengine.ListField() #Milliseconds
+    rewound = mongoengine.ListField() #Milliseconds
+    fastforwarded = mongoengine.ListField() #Milliseconds
 
-class Predictions(mongoengine.Document):
-    activateControls = mongoengine.ListField()
+class Prediction(mongoengine.Document):
+    genre = mongoengine.StringField(required=True)
+    activateControls = mongoengine.ListField() #List of times where action is anticipated

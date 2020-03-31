@@ -1,18 +1,21 @@
 from pymongo import MongoClient
 import mongoengine
-from mongoModels import Video, Behaviour
+from mongoModels import Video, Behaviour, Prediction
 
 mongo = MongoClient()
 mongo = MongoClient('localhost', 27017)
+
+#Database name
 db = mongo['AwakeTree']
 mongoengine.connect('AwakeTree')
 
 #Tables (Collections)
 videos = db["videos"]
 videoBehaviour = db["videoBehaviour"]
+predictions = db["predictions"]
 
-def addVideo(Video):
-    Video.save()
+def addVideo(video):
+    video.save()
 
 def findVideoById(videoID):
     try:
@@ -74,23 +77,32 @@ def filterBehaviourByGenre(genre):
             print("No behaviour associated with that video added yet")
         else:
             filteredVideos.append(Behaviour.objects(videoID=video.videoID).get())
-    for elem in filteredVideos:
-        print(elem.videoID)
+    # for elem in filteredVideos:
+    #     print(elem.videoID)
+    return filteredVideos
+
+def addPredictionGenre(genre):
+    genre.save()
+
+def addPrediction(prediction):
+    try:
+        Prediction.objects(genre=prediction.genre).get()
+    except:
+        prediction.save()
+    else:
+        Prediction.objects(genre=prediction.genre).update(set__activateControls=prediction.activateControls)
+        # if not prediction.activateControls[0] in Prediction.objects(genre=prediction.genre).get().activateControls:
+        #     Prediction.objects(genre=prediction.genre).update(push__activateControls__1=prediction.activateControls)
 
 # def seedDatabase():
-#     addVideo(Video(videoID="001", title="video1", length=21.52, genre="Action"))
-#     addVideo(Video(videoID="002", title="Summer2015", length=21.52, genre="Action"))
-    # addVideo(Video(videoID="003", path="", title="video3", length=0.0, genre="Comedy"))
-    # addVideo(Video(videoID="004", path="", title="video4", length=0.0, genre="Action"))
-    # addVideo(Video(videoID="005", path="", title="video5", length=0.0, genre="Drama"))
-    # addVideo(Video(videoID="006", path="", title="video6", length=0.0, genre="Action"))
-    # addPlayBehaviour(Behaviour(videoID="001", played=[1]))
-    # addPlayBehaviour(Behaviour(videoID="001", played=[2]))
-    # addPlayBehaviour(Behaviour(videoID="001", played=[3]))
-    # addFFBehaviour(Behaviour(videoID="001", fastforwarded=[4]))
-    # addFFBehaviour(Behaviour(videoID="001", fastforwarded=[2]))
-    # addRWBehaviour(Behaviour(videoID="001", rewound=[10]))
-    # addPauseBehaviour(Behaviour(videoID="001", paused=[8]))
-    # addRWBehaviour(Behaviour(videoID="001", rewound=[6]))
-
+    # addVideo(Video(videoID="001", title="video1", length=2152, genre="Action"))
+    # addVideo(Video(videoID="002", title="Summer2015", length=2152, genre="Action"))
+    # addVideo(Video(videoID="003", title="Horror1", length=2152, genre="Horror"))
+    # addVideo(Video(videoID="004", title="Comedy1", length=2152, genre="Comedy"))
+    # addVideo(Video(videoID="005", title="Drama1", length=2152, genre="Drama"))
+    # addPredictionGenre(Prediction(genre="Action"))
+    # addPredictionGenre(Prediction(genre="Horror"))
+    # addPredictionGenre(Prediction(genre="Comedy"))
+    # addPredictionGenre(Prediction(genre="Drama"))
+    # addPrediction(Prediction(genre="Action", activateControls=[1]))
 # seedDatabase()

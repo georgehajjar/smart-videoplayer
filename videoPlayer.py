@@ -97,7 +97,7 @@ class TestPanel(wx.Panel):
         self.playBtn.Enable()
 
     def OnPlay(self, evt):
-        client.sendAction("ply", self.mc.Tell())
+        client.sendAction("ply", int(self.mc.Tell()/10))
         if not self.mc.Play():
             wx.MessageBox("Unable to Play media", "ERROR", wx.ICON_ERROR | wx.OK)
         else:
@@ -108,18 +108,18 @@ class TestPanel(wx.Panel):
             self.pauseBtn.Enable()
 
     def OnPause(self, evt):
-        client.sendAction("pse", self.mc.Tell())
+        client.sendAction("pse", int(self.mc.Tell()/10))
         self.mc.Pause()
         self.playBtn.Enable()
         self.pauseBtn.Disable()
 
     def OnForward(self, evt):
-        client.sendAction("ffw", self.mc.Tell())
+        client.sendAction("ffw", int(self.mc.Tell()/10))
         offset = self.slider.GetValue()
         self.mc.Seek(offset + 5000)
 
     def OnBackward(self, evt):
-        client.sendAction("rwd", self.mc.Tell())
+        client.sendAction("rwd", int(self.mc.Tell()/10))
         offset = self.slider.GetValue()
         self.mc.Seek(offset - 5000)
 
