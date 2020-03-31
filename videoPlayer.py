@@ -1,10 +1,18 @@
 #Package imports
+import socket
+import threading
+import yaml
 import wx
 import wx.media
 import os
 
-#Module imports
-import client
+#Global vars
+connectionHalted = False
+videoLoaded = False
+actionHandled = False
+currentVideoID = ""
+currentVideoPath = ""
+cSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 class StaticText(wx.StaticText):
     def SetLabel(self, label):
@@ -78,7 +86,10 @@ class TestPanel(wx.Panel):
         self.timer.Start(100)
 
     def requestVideo(self, evt, videoID):
-        path = client.requestVideo(videoID)
+        if connectionHalted:
+            return
+        # Request video to client
+        path = requestVideo(videoID)
         self.loadVideo(os.path.abspath("../" + str(path) + ".mp4"))
         wx.CallAfter(self.loadVideo, os.path.abspath("../" + str(path) + ".mp4"))
 
@@ -97,7 +108,11 @@ class TestPanel(wx.Panel):
         self.playBtn.Enable()
 
     def OnPlay(self, evt):
-        client.sendAction("ply", int(self.mc.Tell()/10))
+        if connectionHalted:
+            return
+        # Play action to client, wait for server to send action back
+        while not sendAction("ply", int(self.mc.Tell()/10)):
+            pass
         if not self.mc.Play():
             wx.MessageBox("Unable to Play media", "ERROR", wx.ICON_ERROR | wx.OK)
         else:
@@ -108,18 +123,30 @@ class TestPanel(wx.Panel):
             self.pauseBtn.Enable()
 
     def OnPause(self, evt):
-        client.sendAction("pse", int(self.mc.Tell()/10))
+        if connectionHalted:
+            return
+        # Pause action to client, wait for server to send action back
+        while not sendAction("pse", int(self.mc.Tell()/10)):
+            pass
         self.mc.Pause()
         self.playBtn.Enable()
         self.pauseBtn.Disable()
 
     def OnForward(self, evt):
-        client.sendAction("ffw", int(self.mc.Tell()/10))
+        if connectionHalted:
+            return
+        # Fastforward action to client, wait for server to send action back
+        while not sendAction("ffw", int(self.mc.Tell()/10)):
+            pass
         offset = self.slider.GetValue()
         self.mc.Seek(offset + 5000)
 
     def OnBackward(self, evt):
-        client.sendAction("rwd", int(self.mc.Tell()/10))
+        if connectionHalted:
+            return
+        # Rewind action to client, wait for server to send action back
+        while not sendAction("rwd", int(self.mc.Tell()/10)):
+            pass
         offset = self.slider.GetValue()
         self.mc.Seek(offset - 5000)
 
@@ -133,10 +160,6 @@ class TestPanel(wx.Panel):
         self.st_len.SetLabel('{:.2f}'.format(self.mc.Length()/1000))
         self.st_pos.SetLabel('{:.2f}/{:.2f}'.format(offset/1000, self.mc.Length()/1000))
 
-    def ShutdownDemo(self):
-        self.timer.Stop()
-        del self.timer
-
 class MyFrame(wx.Frame):
     def __init__(self):
         wx.Frame.__init__(self,parent=None, title="Smart VP")
@@ -147,8 +170,90 @@ class MyFrame(wx.Frame):
         self.Fit()
         self.Show()
 
+#Client methods
+def recieve(sock, next):
+    print("Connected to server: " + str(sock.getsockname()))
+    connected = True
+    while connected:
+        try:
+            data = sock.recv(32)
+        except:
+            print("Server " + str(sock.getsockname()) + " has disconnected")
+            connected = False
+            sock.close()
+        else:
+            data = data.decode("utf-8")
+            if not data:
+                print("Server " + str(sock.getsockname()) + " has disconnected")
+                connected = False
+                sock.close()
+                break
+            print(data)
+            next(sock, data)
+    return
+
+def controlDecode(sock, data):
+    if data[:3] == "req":
+        global currentVideoID, currentVideoPath, videoLoaded
+        currentVideoID = data[3:6]
+        currentVideoPath = data[6:]
+        videoLoaded = True
+    elif data[:3] == "act":
+        global actionHandled
+        actionHandled = True
+    return
+
+#Method gets called when user requests video from list
+def requestVideo(videoID):
+    global videoLoaded
+    #Send video id to control server
+    cSock.send(str.encode("req" + str(videoID)))
+    while not videoLoaded:
+        #Wait for responce back
+        pass
+    videoLoaded = False
+    return currentVideoPath
+
+#Method gets called when user performs action on video
+def sendAction(action, time):
+    global actionHandled
+    #Send action to control server for 2 reasons
+        #To perform the action: action -> control server -> client
+        #To save the action: action -> database
+    cSock.send(str.encode("act" + str(action) + str(currentVideoID) + str(time)))
+    while not actionHandled:
+        #Wait for responce back
+        pass
+    actionHandled = False
+    applyPredictions()
+    return True
+
+def applyPredictions():
+    global connectionHalted
+    connectionHalted = True
+    cSock.close()
+
+def setup():
+    with open('config.yaml', 'r') as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+
+    #Client(s) to control server
+    cHost = config["sockets"]["c2c"]["host"]
+    cPort = config["sockets"]["c2c"]["port"]
+
+    #Attempt connection to control server
+    try:
+        cSock.connect((cHost, cPort))
+    except:
+        #Error case if cannot establish connection
+        print("Could not make a connection to the control server")
+
+    #Create new thread for control server connection
+    receiveThread = threading.Thread(target = recieve, args = (cSock, controlDecode))
+    receiveThread.start()
+
 if __name__ == '__main__':
-    import sys,os
+    setup()
     app = wx.App()
     top = MyFrame()
     top.Show()

@@ -52,7 +52,7 @@ class Client(threading.Thread):
                     clientConnections.remove(self)
                     total_connections -= 1
                     break
-                # print(data)
+                print(data)
                 clientDecode(self.socket, data)
         return
 
@@ -62,6 +62,8 @@ def clientDecode(sock, data):
         video = mongoConfig.findVideoById(data[3:])
         #Send path to client
         sock.send(str.encode("req" + str(video.videoID) + str(video.title)))
+        #Get video genre
+        sock.send(mongoConfig.findPredictionByGenre(str(mongoConfig.findVideoById(str(video.videoID)).genre)))
     elif data[:3] == "act": #Recieve an action performed on video.
         #Save action to database.
         updateActions(data[3:6], data[6:9], data[9:])
@@ -82,6 +84,9 @@ def updateActions(action, videoID, time):
     else:
         print("Error with updateActions")
     return
+
+def sendPrediction(genre):
+    mongoConfig.findPredictionByGenre(str(genre))
 
 def setup():
     with open('config.yaml', 'r') as f:

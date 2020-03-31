@@ -7,6 +7,7 @@ import yaml
 
 #Global vars
 videoLoaded = False
+actionHandled = False
 currentVideoID = ""
 currentVideoPath = ""
 cSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -28,18 +29,19 @@ def recieve(sock, next):
                 connected = False
                 sock.close()
                 break
-            # print(data)
+            print(data)
             next(sock, data)
     return
 
 def controlDecode(sock, data):
     if data[:3] == "req":
-        global videoLoaded, currentVideoID, currentVideoPath
+        global currentVideoID, currentVideoPath, videoLoaded
         currentVideoID = data[3:6]
         currentVideoPath = data[6:]
         videoLoaded = True
     elif data[:3] == "act":
-        handleAction(data[3:])
+        global actionHandled
+        actionHandled = True
     return
 
 #Method gets called when user requests video from list
@@ -55,22 +57,20 @@ def requestVideo(videoID):
 
 #Method gets called when user performs action on video
 def sendAction(action, time):
+    global actionHandled
     #Send action to control server for 2 reasons
         #To perform the action: action -> control server -> client
         #To save the action: action -> database
     cSock.send(str.encode("act" + str(action) + str(currentVideoID) + str(time)))
+    while not actionHandled:
+        #Wait for responce back
+        pass
+    actionHandled = False
+    applyPredictions()
+    return True
 
-def handleAction(action):
-    if action == "ply":
-        print("User has pressed play")
-    elif action == "pse":
-        print("User has pressed pause")
-    elif action == "ffw":
-        print("User has fastforwarded")
-    elif action == "rwd":
-        print("User has rewound")
-    else:
-        print(action)
+def applyPredictions():
+    cSock.close()
 
 def setup():
     with open('config.yaml', 'r') as f:

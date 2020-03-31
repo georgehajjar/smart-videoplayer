@@ -94,6 +94,12 @@ def addPrediction(prediction):
         # if not prediction.activateControls[0] in Prediction.objects(genre=prediction.genre).get().activateControls:
         #     Prediction.objects(genre=prediction.genre).update(push__activateControls__1=prediction.activateControls)
 
+def findPredictionByGenre(genre):
+    try:
+        return Prediction.objects(genre=str(genre)).get().activateControls
+    except:
+        print("No prediction with that genre found")
+
 # def seedDatabase():
     # addVideo(Video(videoID="001", title="video1", length=2152, genre="Action"))
     # addVideo(Video(videoID="002", title="Summer2015", length=2152, genre="Action"))
