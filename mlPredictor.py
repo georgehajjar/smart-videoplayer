@@ -2,6 +2,7 @@
 import sys
 import numpy as np
 import pickle
+import statistics
 from itertools import groupby
 import matplotlib.pyplot as plt
 from sklearn import linear_model
@@ -45,6 +46,8 @@ def getActionDataByGenre(genre):
 
 def generateGraphData(genre):
     data = getActionDataByGenre(str(genre))
+    if not data:
+        return
     #Generate array of y values based on the amount of x occurances
     y = [len(list(group)) for key, group in groupby(data)]
     #Remove duplicate values
@@ -62,9 +65,8 @@ def generateGraphData(genre):
         xTrain[x.index(elem)][0] = elem
         yTrain[x.index(elem)][0] = y[x.index(elem)]
 
-    return xTrain, yTrain
+    polynomialInterpolation(xTrain, yTrain, genre)
 
-# linearRegression(generateGraphData("Action")[0], generateGraphData("Action")[1])
 def linearRegression(x, y):
     # Create linear regression object
     regr = linear_model.LinearRegression()
@@ -89,16 +91,16 @@ def linearRegression(x, y):
     plt.yticks(())
     plt.show()
 
-def polynomialInterpolation(x, y):
-    plt.plot(x, y, color='cornflowerblue', linewidth=1, label="ground truth")
-    plt.scatter(x, y, color='navy', s=30, marker='o', label="training points")
+def polynomialInterpolation(x, y, genre):
+    # plt.plot(x, y, color='cornflowerblue', linewidth=1, label="ground truth")
+    # plt.scatter(x, y, color='navy', s=30, marker='o', label="training points")
 
     colors = ['teal', 'yellowgreen', 'gold']
     for count, degree in enumerate([3, 4, 5]):
         model = make_pipeline(PolynomialFeatures(degree), Ridge())
         model.fit(x, y)
         y_plot = model.predict(x)
-        plt.plot(x, y_plot, color=colors[count], linewidth=2, label="degree %d" % degree)
+        # plt.plot(x, y_plot, color=colors[count], linewidth=2, label="degree %d" % degree)
 
         #Most accurate model is at degree 5
         if degree == 5:
@@ -108,21 +110,26 @@ def polynomialInterpolation(x, y):
 
     # plt.legend(loc='upper right')
     # plt.show()
-    generatePredictions(x, y)
+    generatePredictions(x, y, genre)
 
-def generatePredictions(x, y):
+def generatePredictions(x, y, genre):
     # load the model from disk
     loaded_model = pickle.load(open('finalized_model.sav', 'rb'))
     #print(loaded_model.score(x, y))
     yPredict = loaded_model.predict(x)
 
-    predictedAction, count = [], 0
+    predictedAction, temp, count = [], [], 0
     for elem in yPredict:
-        if (abs(elem[0] - y[count][0])) <= 0.25:
-            # print(x[count][0])
-            predictedAction.append(x[count][0])
+        temp.append(abs(elem[0] - y[count][0]))
         count += 1
-    predictedAction.sort()
-    mongoConfig.addPrediction(Prediction(genre="Action", activateControls=predictedAction))
+    count = 0
+    for elem in yPredict:
+        if (abs(elem[0] - y[count][0])) >= statistics.mean(temp):
+            predictedAction.append(x[count][0])
+            #Add neighbour for smoother bursts
+            predictedAction.append(x[count][0] + 1)
+        count += 1
 
-polynomialInterpolation(generateGraphData("Action")[0], generateGraphData("Action")[1])
+    predictedAction = list(set(predictedAction))
+    predictedAction.sort()
+    mongoConfig.addPrediction(Prediction(genre=genre, activateControls=predictedAction))

@@ -9,6 +9,7 @@ import json
 sys.path.insert(0, 'database')
 import mongoConfig
 from mongoModels import Video, Behaviour
+import mlPredictor
 
 clientConnections = []
 total_connections = 0
@@ -62,6 +63,8 @@ def clientDecode(sock, data):
     if recievedData['type'] == "req": #Recieve a request to load video.
         #Find video in database
         video = mongoConfig.findVideoById(recievedData['videoID'])
+        #Generate prediction data everytime a user requests a video. This will update old values
+        mlPredictor.generateGraphData(str(video.genre))
         #Send path to client
         sendData = {
             'type': 'req',

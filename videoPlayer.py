@@ -8,11 +8,15 @@ import os
 import json
 
 #Global vars
-connectionHalted = False
+
+#Denotes whether the client is connected to the server. If the predictor determines that a user will take action, this is set to True
+connectedToServer = True
+
 videoLoaded = False
 actionHandled = False
 currentVideoID = ""
 currentVideoPath = ""
+predictionArray = []
 cSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 class StaticText(wx.StaticText):
@@ -66,6 +70,7 @@ class TestPanel(wx.Panel):
 
         self.st_len  = StaticText(self, -1, size=(100,-1))
         self.st_pos  = StaticText(self, -1, size=(100,-1))
+        self.st_status = StaticText(self, -1, size=(100,-1))
 
         # setup the layout
         sizer = wx.GridBagSizer(5,5)
@@ -75,6 +80,7 @@ class TestPanel(wx.Panel):
         sizer.Add(pause, (3,2))
         sizer.Add(forward, (4,2))
         sizer.Add(backward, (5,2))
+        sizer.Add(self.st_status, (7,2))
         sizer.Add(load1, (2,3))
         sizer.Add(load2, (3,3))
         sizer.Add(load3, (4,3))
@@ -87,7 +93,7 @@ class TestPanel(wx.Panel):
         self.timer.Start(100)
 
     def requestVideo(self, evt, videoID):
-        if connectionHalted:
+        if not connectedToServer:
             return
         # Request video to client
         path = requestVideo(videoID)
@@ -109,7 +115,7 @@ class TestPanel(wx.Panel):
         self.playBtn.Enable()
 
     def OnPlay(self, evt):
-        if connectionHalted:
+        if not connectedToServer:
             return
         # Play action to client, wait for server to send action back
         while not sendAction("ply", int(self.mc.Tell()/10)):
@@ -124,7 +130,7 @@ class TestPanel(wx.Panel):
             self.pauseBtn.Enable()
 
     def OnPause(self, evt):
-        if connectionHalted:
+        if not connectedToServer:
             return
         # Pause action to client, wait for server to send action back
         while not sendAction("pse", int(self.mc.Tell()/10)):
@@ -134,7 +140,7 @@ class TestPanel(wx.Panel):
         self.pauseBtn.Disable()
 
     def OnForward(self, evt):
-        if connectionHalted:
+        if not connectedToServer:
             return
         # Fastforward action to client, wait for server to send action back
         while not sendAction("ffw", int(self.mc.Tell()/10)):
@@ -143,7 +149,7 @@ class TestPanel(wx.Panel):
         self.mc.Seek(offset + 5000)
 
     def OnBackward(self, evt):
-        if connectionHalted:
+        if not connectedToServer:
             return
         # Rewind action to client, wait for server to send action back
         while not sendAction("rwd", int(self.mc.Tell()/10)):
@@ -160,6 +166,24 @@ class TestPanel(wx.Panel):
         self.slider.SetValue(offset)
         self.st_len.SetLabel('{:.2f}'.format(self.mc.Length()/1000))
         self.st_pos.SetLabel('{:.2f}/{:.2f}'.format(offset/1000, self.mc.Length()/1000))
+        global predictionArray, connectedToServer
+        if len(predictionArray) > 6:
+            try:
+                print(int((offset/self.mc.Length())*100))
+                #If video is about to start or is ending/at end -> client-server connection TRUE
+                if int((offset/self.mc.Length())*100) <= 1 or int((offset/self.mc.Length())*100) >= 99:
+                    connectedToServer = True
+                    self.st_status.SetLabel('Connected: {}'.format(connectedToServer))
+                #If current time of video is a time that an action is anticipated -> client-server connection TRUE
+                elif int((offset/self.mc.Length())*100) in predictionArray:
+                    connectedToServer = True
+                    self.st_status.SetLabel('Connected: {}'.format(connectedToServer))
+                #Every other case -> client-server connection FALSE
+                else:
+                    connectedToServer = False
+                    self.st_status.SetLabel('Connected: {}'.format(connectedToServer))
+            except:
+                pass
 
 class MyFrame(wx.Frame):
     def __init__(self):
@@ -179,19 +203,18 @@ def recieve(sock, next):
         try:
             data = sock.recv(1024)
         except:
-            print("Server " + str(sock.getsockname()) + " has disconnected")
+            print("Server has disconnected")
             connected = False
             sock.close()
         else:
             data = data.decode("utf-8")
             if not data:
-                print("Server " + str(sock.getsockname()) + " has disconnected")
+                print("Server has disconnected")
                 connected = False
                 sock.close()
                 break
             print(data)
             next(sock, data)
-    return
 
 def controlDecode(sock, data):
     recievedData = json.loads(data)
@@ -201,7 +224,8 @@ def controlDecode(sock, data):
         currentVideoPath = recievedData['title']
         videoLoaded = True
     elif recievedData['type'] == "prd":
-        applyPredictions(recievedData['prediction'])
+        global predictionArray
+        predictionArray = recievedData['prediction']
     elif recievedData['type'] == "act":
         global actionHandled
         actionHandled = True
@@ -241,17 +265,9 @@ def sendAction(action, time):
         #Wait for responce back
         pass
     actionHandled = False
-    # applyPredictions()
     return True
 
-def applyPredictions(predictionsArray):
-    global connectionHalted
-    for elem in predictionsArray:
-        print(elem)
-    # connectionHalted = True
-    # cSock.close()
-
-def setup():
+def connect():
     with open('config.yaml', 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
@@ -266,6 +282,8 @@ def setup():
         #Error case if cannot establish connection
         print("Could not make a connection to the control server")
 
+def setup():
+    connect()
     #Create new thread for control server connection
     receiveThread = threading.Thread(target = recieve, args = (cSock, controlDecode))
     receiveThread.start()

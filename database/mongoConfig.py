@@ -81,9 +81,6 @@ def filterBehaviourByGenre(genre):
     #     print(elem.videoID)
     return filteredVideos
 
-def addPredictionGenre(genre):
-    genre.save()
-
 def addPrediction(prediction):
     try:
         Prediction.objects(genre=prediction.genre).get()
@@ -106,9 +103,12 @@ def findPredictionByGenre(genre):
     # addVideo(Video(videoID="003", title="Horror1", length=2152, genre="Horror"))
     # addVideo(Video(videoID="004", title="Comedy1", length=2152, genre="Comedy"))
     # addVideo(Video(videoID="005", title="Drama1", length=2152, genre="Drama"))
-    # addPredictionGenre(Prediction(genre="Action"))
-    # addPredictionGenre(Prediction(genre="Horror"))
-    # addPredictionGenre(Prediction(genre="Comedy"))
-    # addPredictionGenre(Prediction(genre="Drama"))
-    # addPrediction(Prediction(genre="Action", activateControls=[1]))
+    # addPlayBehaviour(Behaviour(videoID="001", played=[0, 20, 40, 60]))
+    # addPauseBehaviour(Behaviour(videoID="001", paused=[1, 25, 30]))
+    # addFFBehaviour(Behaviour(videoID="001", fastforwarded=[50]))
+    # addRWBehaviour(Behaviour(videoID="001", rewound=[89]))
+    # addPlayBehaviour(Behaviour(videoID="002", played=[0, 21, 41, 61]))
+    # addPauseBehaviour(Behaviour(videoID="002", paused=[5, 22, 90]))
+    # addFFBehaviour(Behaviour(videoID="002", fastforwarded=[60]))
+    # addRWBehaviour(Behaviour(videoID="002", rewound=[99]))
 # seedDatabase()
