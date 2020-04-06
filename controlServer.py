@@ -106,9 +106,6 @@ def updateActions(action, videoID, time):
         print("Error with updateActions")
     return
 
-def sendPrediction(genre):
-    mongoConfig.findPredictionByGenre(str(genre))
-
 def setup():
     with open('config.yaml', 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
