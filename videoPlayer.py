@@ -169,7 +169,7 @@ class TestPanel(wx.Panel):
         global predictionArray, connectedToServer
         if len(predictionArray) > 6:
             try:
-                print(int((offset/self.mc.Length())*100))
+                int((offset/self.mc.Length())*100)
                 #If video is about to start or is ending/at end -> client-server connection TRUE
                 if int((offset/self.mc.Length())*100) <= 1 or int((offset/self.mc.Length())*100) >= 99:
                     connectedToServer = True
